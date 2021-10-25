@@ -43,6 +43,22 @@ class AdaBoostClassifier():
         scores = []
         exp_losses = []
         ### YOUR CODE HERE 
+        for t in range(self.n_estimators):
+          tmp = self.weak_learner()
+          tmp.fit(X, y, w)
+          self.models.append(tmp)
+          err_t = tmp.score(X, y)
+          a_t = 1/2 * np.log((1-err_t)/err_t)
+          
+          self.alphas.append(a_t)
+          
+          prediction = tmp.predict(X)
+          arr = [w[i] * np.exp(-a_t * y[i] * prediction[i]) for i in range(y.shape[0])]
+          w = arr / sum(arr)
+          print(self.score(X, y))
+          scores.append(self.score(X, y))
+          exp_losses.append(self.exp_loss(X, y))
+
         ### END CODE
 
         # remember to ensure that self.models and self.alphas are filled
@@ -64,6 +80,8 @@ class AdaBoostClassifier():
 
         loss = None
         ### YOUR CODE here 1-3 lines
+        prediction = self.predict(X)
+        loss = 1/len(y) * np.sum([np.exp(-yi * f_xi) for f_xi, yi in zip(prediction, y)])
         ### END CODE
         return loss
         
@@ -77,11 +95,14 @@ class AdaBoostClassifier():
         Returns:
           pred: np.array (n, ) ensemble output on each input point in X (rows)
         """
-        pred = None
+        pred = np.zeros((X.shape[0], 1))
         if len(self.models) == 0:
             return np.zeros(X.shape[0])
         ### YOUR CODE HERE 3-8 lines
+        for m, a in zip(self.models, self.alphas):
+          pred = pred + a*m.predict(X)
         ### END CODE
+        assert pred.shape[0] == X.shape[0]
         return pred
         
     def predict(self, X):
@@ -93,6 +114,7 @@ class AdaBoostClassifier():
         """
         pred = None
         ### YOUR CODE Here 1-3 lines
+        pred = np.sign(self.ensemble_output(X))
         ### END CODE 
         return pred
 
@@ -106,6 +128,7 @@ class AdaBoostClassifier():
         """
         score = 0
         ### YOUR CODE HERE 1-3 lines
+        score = np.mean(self.predict(X)==y)
         ### END CODE
         return score
 
@@ -133,7 +156,8 @@ def sklearn_test():
                             n_estimators=200)
 
    scores, exp_losses = bdt.fit(X, y)
-   print('Final Accuracy', scores[-1])
+
+   print('Final Accuracy', scores[0])
    fig, ax = plt.subplots(1, 2, figsize=(12,10))
    ax[0].plot(exp_losses, 'b--', label='exp loss')
    ax[0].plot(1.0 - np.array(scores), 'm--', label='0-1 Loss')
